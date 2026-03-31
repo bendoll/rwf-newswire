@@ -4,3 +4,4 @@ Watches a Discord channel for post embeds and sends them to a network-attached E
 
 Specifically tuned for Raider.IO RWF coverage, but this could easily be modified for other similar applications.
 
+This project is not affiliated with or endorsed by Raider.IO
