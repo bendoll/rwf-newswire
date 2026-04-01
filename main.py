@@ -19,7 +19,8 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 PRINTER_IP = os.getenv("PRINTER_IP")
 PRINTER_PORT = int(os.getenv("PRINTER_PORT", 9100))
-PRINT_DELAY = int(os.getenv("PRINT_QUEUE_INTERVAL"))
+PRINT_QUEUE_INTERVAL = int(os.getenv("PRINT_QUEUE_INTERVAL"))
+PRINT_JOB_DELAY = int(os.getenv("PRINT_JOB_DELAY"))
 
 # additional config
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -152,6 +153,9 @@ async def printer_worker():
             job_type = job["type"]
 
             if job_type == "text":
+                # Delay print 60 seconds
+                await asyncio.sleep(PRINT_JOB_DELAY)
+                
                 await asyncio.to_thread(
                     print_text,
                     job["date"],
@@ -168,7 +172,7 @@ async def printer_worker():
             print_queue.task_done()
 
         # wait before processing next job
-        await asyncio.sleep(PRINT_DELAY)
+        await asyncio.sleep(PRINT_QUEUE_INTERVAL)
 
 
 @client.event
