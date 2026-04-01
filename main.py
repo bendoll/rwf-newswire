@@ -135,6 +135,31 @@ def print_embed(date, time, title, description, footer):
     printer.set(align="center", bold=True)
     printer.text("############# END OF TRANSMISSION #############\n\n\n\n")
 
+    # close printer connection
+    printer.cut()
+    printer.close()
+
+    logging.info("Print job completed")
+
+
+def print_text(date, time, author, content):
+    logging.info("Print job started...")
+    # wrap sanitised content text before printing
+    _content = wrap_text(sanitise(content), width=48)
+
+    # initialise printer connection
+    printer = get_printer()
+    printer.open()
+
+    # print all the things
+    printer.set(align="left", bold=False)
+    printer.text(f"{date}\n{time} - ")
+    printer.set(bold=True)
+    printer.text(f"{author}\n")
+    printer.set(bold=False)
+    printer.text(_content + "\n\n")
+
+    # close printer connection
     printer.cut()
     printer.close()
 
@@ -163,6 +188,11 @@ async def printer_worker():
                     job["title"],
                     job["description"],
                     job["footer"],
+                )
+
+            elif job_type == "text":
+                await asyncio.to_thread(
+                    print_text, job["date"], job["time"], job["author"], job["content"]
                 )
 
         except Exception as e:
@@ -202,6 +232,16 @@ async def on_message(message):
                 "title": message.embeds[0].title or "",
                 "description": message.embeds[0].description or "",
                 "footer": message.embeds[0].footer.text or "",
+            }
+        )
+    elif message.content:
+        await print_queue.put(
+            {
+                "type": "text",
+                "date": date,
+                "time": time,
+                "author": message.author.name,
+                "content": message.content,
             }
         )
 
