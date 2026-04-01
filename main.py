@@ -4,11 +4,13 @@ import asyncio
 import logging
 import textwrap
 import re
+import requests
 from datetime import timezone
 from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 import discord
-from PIL import Image
+from PIL import Image, ImageEnhance
+from io import BytesIO
 from escpos.printer import Network
 
 
@@ -26,7 +28,7 @@ PRINT_JOB_DELAY = int(os.getenv("PRINT_JOB_DELAY"))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 HEADER_IMG = os.path.join(BASE_DIR, "img/Logo_Black.png")
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 # convert UTC timestamp to local date and time
@@ -100,8 +102,6 @@ def get_printer():
 
 
 def print_embed(date, time, title, description, footer):
-    logging.info("Print job started...")
-
     # wrap sanitised text before printing
     _title = wrap_text(sanitise(title), width=48)
     _description = wrap_text(sanitise(description), width=48)
@@ -139,11 +139,8 @@ def print_embed(date, time, title, description, footer):
     printer.cut()
     printer.close()
 
-    logging.info("Print job completed")
-
 
 def print_text(date, time, author, content):
-    logging.info("Print job started...")
     # wrap sanitised content text before printing
     _content = wrap_text(sanitise(content), width=48)
 
@@ -163,7 +160,32 @@ def print_text(date, time, author, content):
     printer.cut()
     printer.close()
 
-    logging.info("Print job completed")
+
+def print_image(url):
+    printer = get_printer()
+    response = requests.get(url)
+
+    img = Image.open(BytesIO(response.content))
+    # force resize image to printer width
+    target_width = 576
+    img = img.resize((target_width, int(img.height * target_width / img.width)))
+    # convert image to monochrome
+    img = img.convert("L")
+    # crank the contrast
+    img = ImageEnhance.Contrast(img).enhance(1.5)
+    # apply dithering
+    img = img.convert("1")
+    # apply thresholding
+    # img = img.point(lambda x: 0 if x < 128 else 255, "1")
+    # print the image
+    
+    printer.open()
+    printer.image(img)
+    # add 4 newlines of feed (roughly 10mm)
+    printer.text("\n" * 4)
+
+    printer.cut()
+    printer.close()
 
 
 # set up print queue worker
@@ -179,6 +201,7 @@ async def printer_worker():
 
             if job_type == "embed":
                 # Delay print 60 seconds
+                logging.info(f"Print job received of type 'embed'. Waiting {PRINT_JOB_DELAY} seconds...")
                 await asyncio.sleep(PRINT_JOB_DELAY)
 
                 await asyncio.to_thread(
@@ -191,14 +214,20 @@ async def printer_worker():
                 )
 
             elif job_type == "text":
+                logging.info("Print job received of type 'text'")
                 await asyncio.to_thread(
                     print_text, job["date"], job["time"], job["author"], job["content"]
                 )
+
+            elif job_type == "image":
+                logging.info("Print job received of type 'image'")
+                await asyncio.to_thread(print_image, job["url"])
 
         except Exception as e:
             logging.warning(f"Print job failed: {e}")
 
         finally:
+            logging.info("Print job completed!")
             print_queue.task_done()
 
         # wait before processing next job
@@ -244,6 +273,10 @@ async def on_message(message):
                 "content": message.content,
             }
         )
+    # print image attachment
+    for attachment in message.attachments:
+        if attachment.content_type and attachment.content_type.startswith("image"):
+            await print_queue.put({"type": "image", "url": attachment.url})
 
 
 client.run(TOKEN)
