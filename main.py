@@ -99,7 +99,7 @@ def get_printer():
     return Network(PRINTER_IP, port=PRINTER_PORT)
 
 
-def print_text(date, time, title, description, footer):
+def print_embed(date, time, title, description, footer):
     logging.info("Print job started...")
 
     # wrap sanitised text before printing
@@ -152,12 +152,12 @@ async def printer_worker():
         try:
             job_type = job["type"]
 
-            if job_type == "text":
+            if job_type == "embed":
                 # Delay print 60 seconds
                 await asyncio.sleep(PRINT_JOB_DELAY)
-                
+
                 await asyncio.to_thread(
-                    print_text,
+                    print_embed,
                     job["date"],
                     job["time"],
                     job["title"],
@@ -196,7 +196,7 @@ async def on_message(message):
     if message.embeds:
         await print_queue.put(
             {
-                "type": "text",
+                "type": "embed",
                 "date": date,
                 "time": time,
                 "title": message.embeds[0].title or "",
