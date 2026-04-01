@@ -153,11 +153,11 @@ def print_text(date, time, author, content):
 
     # print all the things
     printer.set(align="left", bold=False)
-    printer.text(f"{date}\n{time} - ")
+    printer.text(f"\n\n{date}\n{time} - ")
     printer.set(bold=True)
     printer.text(f"{author}\n")
     printer.set(bold=False)
-    printer.text(_content + "\n\n")
+    printer.text(_content + "\n\n\n\n")
 
     # close printer connection
     printer.cut()
