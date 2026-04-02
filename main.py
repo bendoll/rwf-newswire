@@ -60,35 +60,35 @@ def scrub_links(text):
 
 # scrub bullet points from embed footer
 def scrub_bullets(text):
-    return re.sub(r"[●•◦▪▫]", "", text)
+    return re.sub(r"[●]", "", text)
 
 
-# scrub emojis
-EMOJI_REGEX = re.compile(
-    "["
-    "\U0001f300-\U0001f5ff"  # symbols & pictographs
-    "\U0001f600-\U0001f64f"  # emoticons
-    "\U0001f680-\U0001f6ff"  # transport & map
-    "\U0001f700-\U0001f77f"  # alchemical
-    "\U0001f780-\U0001f7ff"  # geometric extended
-    "\U0001f800-\U0001f8ff"  # supplemental arrows-C
-    "\U0001f900-\U0001f9ff"  # supplemental symbols
-    "\U0001fa00-\U0001fa6f"  # chess, etc.
-    "\U0001fa70-\U0001faff"  # newer emojis
-    "\U00002700-\U000027bf"  # dingbats
-    "\U000024c2-\U0001f251"
-    "]+",
-    flags=re.UNICODE,
-)
+# # scrub emojis
+# EMOJI_REGEX = re.compile(
+#     "["
+#     "\U0001f300-\U0001f5ff"  # symbols & pictographs
+#     "\U0001f600-\U0001f64f"  # emoticons
+#     "\U0001f680-\U0001f6ff"  # transport & map
+#     "\U0001f700-\U0001f77f"  # alchemical
+#     "\U0001f780-\U0001f7ff"  # geometric extended
+#     "\U0001f800-\U0001f8ff"  # supplemental arrows-C
+#     "\U0001f900-\U0001f9ff"  # supplemental symbols
+#     "\U0001fa00-\U0001fa6f"  # chess, etc.
+#     "\U0001fa70-\U0001faff"  # newer emojis
+#     "\U00002700-\U000027bf"  # dingbats
+#     "\U000024c2-\U0001f251"
+#     "]+",
+#     flags=re.UNICODE,
+# )
 
 
-def scrub_emoji(text):
-    return EMOJI_REGEX.sub("", text)
+# def scrub_emoji(text):
+#     return EMOJI_REGEX.sub("", text)
 
 
-# scrub all the things
-def sanitise(text):
-    return scrub_emoji(scrub_bullets(scrub_links(text)))
+def remove_skull_emoji(text):
+    text = re.sub(r'☠️|☠', '', text)
+    return re.sub(r'\s{2,}', ' ', text).strip()
 
 
 # discord stuff
@@ -103,9 +103,9 @@ def get_printer():
 
 def print_embed(date, time, title, description, footer):
     # wrap sanitised text before printing
-    _title = wrap_text(sanitise(title), width=48)
-    _description = wrap_text(sanitise(description), width=48)
-    _footer = wrap_text(sanitise(footer), width=48)
+    _title = wrap_text(remove_skull_emoji(title), width=48)
+    _description = wrap_text(scrub_links(scrub_bullets((description))), width=48)
+    _footer = wrap_text(footer, width=48)
 
     # process header image
     img = Image.open(HEADER_IMG)
@@ -142,7 +142,7 @@ def print_embed(date, time, title, description, footer):
 
 def print_text(date, time, author, content):
     # wrap sanitised content text before printing
-    _content = wrap_text(sanitise(content), width=48)
+    _content = wrap_text(content, width=48)
 
     # initialise printer connection
     printer = get_printer()
